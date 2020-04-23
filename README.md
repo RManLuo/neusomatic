@@ -1,6 +1,5 @@
 # 实验报告
 
- 罗林浩 张致远  安峻枫
 
 代码地址：https://github.com/RManLuo/neusomatic.git
 
