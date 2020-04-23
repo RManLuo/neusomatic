@@ -6,7 +6,10 @@
 
 # 数据格式：
 ## 数据来源
-实验采用 [Homo_sapiens.GRCh37.75.dna.chromosome.22.fa.gz](https://scicomp.ethz.ch/wiki/CLC_reference_genomes)作为
+* 实验采用 [Homo_sapiens.GRCh37.75.dna.chromosome.22.fa.gz](https://scicomp.ethz.ch/wiki/CLC_reference_genomes)作为reference
+* tumor.bam  作为肿瘤变异数据
+* normal.bam 作为正常数据
+* region.bed 作为整个训练的区域
 ## BAM文件
 BAM是SAM文件的二进制格式。
 SAM(Sequence Alignment/Map)格式是一种通用的比对格式，用来存储reads到参考序列的比对信息。
