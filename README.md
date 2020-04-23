@@ -1,120 +1,115 @@
-# NeuSomatic: Deep convolutional neural networks for accurate somatic mutation detection
+# 系统简述
+ ![在这里插入图片描述](https://img-blog.csdnimg.cn/20200423212554566.png)
+预处理阶段（preprocess)，将输入的tumor，normal，reference预处理整合成多个.tsv文件。
+预测阶段（call)，将输入的.tsv文件按照图中所示的resnet模型，输入进去。
+~~后处理阶段(postprocess)，将预测阶段~~  
 
-NeuSomatic is based on deep convolutional neural networks for accurate somatic mutation detection. With properly trained models, it can robustly perform across sequencing platforms, strategies, and conditions. NeuSomatic summarizes and augments sequence alignments in a novel way and incorporates multi-dimensional features to capture variant signals effectively. It is not only a universal but also accurate somatic mutation detection method.
-
-For more information contact us at bioinformatics.red@roche.com
-
-## Publication
-If you use NeuSomatic in your work, please cite the following papers:
-
-Sayed Mohammad Ebrahim Sahraeian, Ruolin Liu, Bayo Lau, Karl Podesta, Marghoob Mohiyuddin, Hugo Y. K. Lam, <br/> 
-[Deep convolutional neural networks for accurate somatic mutation detection. Nature Communications 10: 1041, (2019). <br/> 
-doi: https://doi.org/10.1038/s41467-019-09027-x](https://doi.org/10.1038/s41467-019-09027-x)
-
-Sayed Mohammad Ebrahim Sahraeian, Li Tai Fang, Marghoob Mohiyuddin, Huixiao Hong, Wenming Xiao, <br/> 
-[Robust cancer mutation detection with deep learning models derived from tumor-normal sequencing data. bioRxiv (2019): 667261. <br/> 
-doi: https://doi.org/10.1101/667261](https://doi.org/10.1101/667261)
+# 数据格式：
+## BAM文件
+BAM是SAM文件的二进制格式。
+SAM(Sequence Alignment/Map)格式是一种通用的比对格式，用来存储reads到参考序列的比对信息。
+SAM是一种序列比对格式标准，由sanger制定，是以TAB为分割符的文本格式。主要应用于测序序列mapping到基因组上的结果表示，当然也可以表示任意的多重比对结果。
+SAM分为两部分，注释信息（header section）和比对结果部分（alignment section）。
 
 
-## Example Input Matrix
-![Example input](resources/toy_example.png)
+## .vcf文件
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20200423213721519.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3dlaXhpbl80MTk1Nzk1NA==,size_16,color_FFFFFF,t_70)
 
-## Table of Contents
-**[Availability](#availability)**<br>
-**[NeuSomatic Docker Image](#neusomatic-docker-image)**<br>
-**[Required Inputs](#required-inputs)**<br>
-**[Quick Test](#quick-test)**<br>
-**[Example Usage](#example-usage)**<br>
-**[Ensemble mode](#ensemble-mode)**<br>
-**[Creating Training Data](#creating-training-data)**<br>
-**[Trained Network Models](#trained-network-models)**<br>
-**[HPC run](#hpc-run)**<br>
-**[License](#license)**<br>
+VCF是Variant Call Format的简称，是一种定义的专门用于存储基因序列突变信息的文本格式。在生物信息分析中会大量用到VCF格式。例如基因组中的单碱基突变,SNP， 插入/缺失INDEL, 拷贝数变异CNV，和结构变异SV等，都是利用VCF格式来存储的。将其存储为二进制格式就是BCF。
+1.CHROM [chromosome]： 染色体名称，
+2.POS [position]： 参考基因组突变碱基位置，如果是INDEL，位置是INDEL的第一个碱基位置。
+3.ID [identifier]： 突变的名称，
+4.REF [reference base(s)]：参考染色体的碱基
+5.ALT [alternate base(s)]： 与参考序列比较，发生突变的碱基，
+6.QUAL [quality]： Phred标准下的质量值
+7.FILTER [filter status]：使用其它的方法进行过滤后得到的过滤结果
+8.INFO
+ 
 
+## .fa格式
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20200423213708573.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3dlaXhpbl80MTk1Nzk1NA==,size_16,color_FFFFFF,t_70)
 
-## Availability
+FASTA文件主要用于存储生物的序列文件，例如基因组，基因的核酸序列以及氨基酸等，是最常见的生物序列格式，一般以扩展名fa,fasta,fna等。fasta文件中，第一行是由大于号">"开头的任意文字说明，用于序列标记，为了保证后续分析软件能够区分每条序列，单个序列的标识必须是唯一的，序列ID部分可以包含注释信息。从第二行开始为序列本身，只允许使用既定的核苷酸或氨基酸编码符号。序列部分可以在一行，也可以分成多行。
+ 
 
-NeuSomatic is written in Python and C++ and requires a Unix-like environment to run. It has been sucessfully tested on CentOS 7. Its deep learning framework is implemented using PyTorch 1.1.0 to enable GPU acceleration for training/testing.
+## .bed 文件格式
+![在这里插入图片描述](https://img-blog.csdnimg.cn/2020042321363935.png)
 
-NeuSomatic first scans the genome to identify candidate variants and extract alignment information. 
-The binary for this step can be obtained at `neusomatic/bin` folder by running `./build.sh` (which requires cmake 3.13.2 and g++ 5.4.0).
+BED 文件格式提供了一种灵活的方式来定义的数据行，用于描述注释的信息。
+跟GTF/GFF格式一样，也可以用来描述基因组特征。但没有GTF/GFF格式那么正规，通常用来描述 任何人为定义的区间。
+但没有GTF/GFF格式那么正规，通常用来描述任何人为定义的区间。
+所以BED格式最重要的就是染色体加上起始终止坐标这3列。
+ 
+# 模型介绍：
+## 残差网络：
+残差模块由：输入卷积层+BN层+卷积层+BN层+残差层+池化层组成。
+class NSBlock(nn.Module):
 
-Python 3.7 and the following Python packages must be installed:
-* pytorch 1.1.0
-* torchvision 0.3.0
-* pybedtools 0.8.0
-* pysam 0.15.2
-* zlib 1.2.11
-* numpy 1.15.4
-* scipy 1.2.0
-* imageio 2.5.0
-* biopython 1.73
+    def __init__(self, dim, ks_1=3, ks_2=3, dl_1=1, dl_2=1, mp_ks=3, mp_st=1):
+        super(NSBlock, self).__init__()
+        self.dim = dim
+        self.conv_r1 = nn.Conv2d(
+            dim, dim, kernel_size=ks_1, dilation=dl_1, padding=(dl_1 * (ks_1 - 1)) // 2)
+        self.bn_r1 = nn.BatchNorm2d(dim)
+        self.conv_r2 = nn.Conv2d(
+            dim, dim, kernel_size=ks_2, dilation=dl_2, padding=(dl_2 * (ks_2 - 1)) // 2)
+        self.bn_r2 = nn.BatchNorm2d(dim)
+        self.pool_r2 = nn.MaxPool2d((1, mp_ks), padding=(
+            0, (mp_ks - 1) // 2), stride=(1, mp_st))
 
-It also depends on the following packages:
-* cudatoolkit 9.0 (if you want to use GPU)
-* tabix 0.2.6
-* bedtools 2.27.1
-* samtools 1.9
+    def forward(self, x):
+        y1 = (F.relu(self.bn_r1(self.conv_r1(x))))
+        y2 = (self.bn_r2(self.conv_r2(y1)))
+        y3 = x + y2
+        z = self.pool_r2(y3)
+        return z
+# 模型整体结构：
+网络结构：类似与Res-Net的残差结构，4个残差卷积block，每个block包含两个卷积层，一个BatchNormalize层，一个池化层，开始有个1X3的卷积层，最后两层FC层，在输出层，作者用了两个softma层来输：变异类型：(non-somatic call, SNV, insertion, deletion)和变异长度:(0,1,2,>2);一个回归层来确定变异位点位置（1-32）。
+class NeuSomaticNet(nn.Module):
 
-You can install these packages using [anaconda](https://www.anaconda.com/download)/[miniconda](https://conda.io/miniconda.html) :
+    def __init__(self, num_channels):
+        super(NeuSomaticNet, self).__init__()
+        dim = 64
+        self.conv1 = nn.Conv2d(num_channels, dim, kernel_size=(
+            1, 3), padding=(0, 1), stride=1)
+        self.bn1 = nn.BatchNorm2d(dim)
+        self.pool1 = nn.MaxPool2d((1, 3), padding=(0, 1), stride=(1, 1))
+        self.nsblocks = [
+            [3, 5, 1, 1, 3, 1],
+            [3, 5, 1, 1, 3, 2],
+            [3, 5, 2, 1, 3, 2],
+            [3, 5, 4, 2, 3, 2],
+        ]
+        res_layers = []
+        for ks_1, ks_2, dl_1, dl_2, mp_ks, mp_st in self.nsblocks:
+            rb = NSBlock(dim, ks_1, ks_2, dl_1, dl_2, mp_ks, mp_st)
+            res_layers.append(rb)
+        self.res_layers = nn.Sequential(*res_layers)
+        ds = np.prod(list(map(lambda x: x[5], self.nsblocks)))
+        self.fc_dim = dim * 32 * 5 // ds
+        self.fc1 = nn.Linear(self.fc_dim, 240)
+        self.fc2 = nn.Linear(240, 4)
+        self.fc3 = nn.Linear(240, 1)
+        self.fc4 = nn.Linear(240, 4)
+
+    def forward(self, x):
+        x = self.pool1(F.relu(self.bn1(self.conv1(x))))
+        internal_outs = [x]
+
+        x = self.res_layers(x)
+        internal_outs.append(x)
+        x2 = x.view(-1, self.fc_dim)
+        x3 = F.relu(self.fc1(x2))
+        internal_outs.extend([x2, x3])
+        o1 = self.fc2(x3)
+        o2 = self.fc3(x3)
+        o3 = self.fc4(x3)
+        return [o1, o2, o3], internal_outs
+        
+# 训练过程
+预处理部分对应于项目中的preprocessing模块。
 ```
-conda install zlib=1.2.11 numpy=1.15.4 scipy=1.2.0 cmake=3.13.2 imageio=2.5.0
-conda install pysam=0.15.2 pybedtools=0.8.0 samtools=1.9 tabix=0.2.6 bedtools=2.27.1 biopython=1.73 -c bioconda
-conda install pytorch=1.1.0 torchvision=0.3.0 cudatoolkit=9.0 -c pytorch
-```
-Then you can export the conda paths as:
-```
-export PATH="/PATH/TO/CONDA/bin:$PATH"
-export LD_LIBRARY_PATH="/PATH/TO/CONDA/lib:$LD_LIBRARY_PATH"
-```
-g++ 5.4.0 can also be obained as `sudo apt-get install gcc-5 g++-5`.
-
-## NeuSomatic Docker Image
-
-The docker image with all the packages installed (CPU-only) can be found at https://hub.docker.com/r/msahraeian/neusomatic/ 
-
-To use GPU (in `train.py` and `call.py` steps), you should use conda environment to locally install required packages as shown above.
-
-The dockerfile is also available at `docker/Dockerfile` for local build.
-
-Examples on how to use the docker image are shown at `test/docker_test.sh`.
-
-## Required Inputs
-
-For training mode, the following inputs are required:
-* tumor `.bam` alignment file 
-* normal `.bam` alignment file
-* training region `.bed` file
-* truth somatic variant `.vcf` file
-
-For calling mode, the following inputs are required:
-* tumor `.bam` alignment file 
-* normal `.bam` alignment file
-* call region `.bed` file
-* trained model `.pth` file
-
-For the region `.bed` files, if you don't have any preferred target regions for training/calling, you can use the whole genome as the target region. Example bed files of major chromosomes for human hg38, hg19, and b37 references can be found at [resources](resources).
-
-## Quick Test
-Testing the preprocessing, calling, and postprocessing steps:
-```
-cd test
-./run_test.sh
-```
-The outputs at `test/example/work_standalone/NeuSomatic_standalone.vcf` and `test/example/work_ensemble/NeuSomatic_ensemble.vcf` for stand-alone and ensemble modes should look like `test/NeuSomatic_standalone.vcf` and `test/NeuSomatic_ensemble.vcf`, respectively.
-
-Similarly, you can test docker image as:
-```
-cd test
-./docker_test.sh
-```
-
-## Example Usage
-
-For training:
-1. Preprocess step in train mode (scan the alignments, find candidates, generate input matrix dataset)
-```
-python preprocess.py \
+	python preprocess.py \
 	--mode train \
 	--reference GRCh38.fa \
 	--region_bed region.bed \
@@ -126,7 +121,14 @@ python preprocess.py \
 	--number_threads 10 \
 	--scan_alignments_binary ../bin/scan_alignments
 ```
-2. Train network
+Mode 参数候选项有train 以及call 两种模式。
+Reference 参数对应的为 输入中的 reference channel
+Region_bed 项目中除了default的以外还提供了
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20200423215102924.png)
+
+Tumor.bam以及normal.bam  对应的输入 tumor channel,normal channel
+
+神经网络模块：
 ```
 python train.py \
 	--candidates_tsv work_train/dataset/*/candidates*.tsv \
@@ -134,33 +136,15 @@ python train.py \
 	--num_threads 10 \
 	--batch_size 100 
 ```
-If you want to continue training starting from a pretrained model you can use `--checkpoint`.
+--candidates_tsv 即对应 preprocessing 的输出。
+--reference 同上
+--out 目标文件夹
+--checkpoint 直接调用以及训练好的参数模型
 
-For testing:
-1. Preprocess step in call mode (scan the alignments, find candidates, generate input matrix dataset)
-```
-python preprocess.py \
-	--mode call \
-	--reference GRCh38.fa \
-	--region_bed region.bed \
-	--tumor_bam tumor.bam \
-	--normal_bam normal.bam \
-	--work work_call \
-	--min_mapq 10 \
-	--number_threads 10 \
-	--scan_alignments_binary ../bin/scan_alignments
-```
-2. Call variants
-```
-python call.py \
-	--candidates_tsv work_call/dataset/*/candidates*.tsv \
-	--reference GRCh38.fa \
-	--out work_call \
-	--checkpoint work_train/some_checkpoint.pth \
-	--num_threads 10 \
-	--batch_size 100 
-```
-3. Postprocess step (resolve long INDEL sequences, report vcf)
+项目中提供已经训练好的基于不同数据集的网络参数。
+ ![在这里插入图片描述](https://img-blog.csdnimg.cn/20200423215156462.png)
+
+后处理阶段
 ```
 python postprocess.py \
 	--reference GRCh38.fa \
@@ -170,121 +154,143 @@ python postprocess.py \
 	--output_vcf work_call/NeuSomatic.vcf \
 	--work work_call 
 ```
-Here, the final NeuSomatic prediction is reported at `work_call/NeuSomatic.vcf`.
+ 
+# 实验结果：
+训练bash:
+```
+#!/bin/bash
+set -e
 
-NeuSomatic will use GPUs in train/call steps if they are avilable. To use specific GPUs for train/call steps, you can set the environment variable `CUDA_VISIBLE_DEVICES` as:
+test_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+neusomatic_dir="$( dirname ${test_dir} )"
+
+cd ${test_dir}
+mkdir -p example
+cd example
+if [ ! -f Homo_sapiens.GRCh37.75.dna.chromosome.22.fa ]
+then
+        if [ ! -f Homo_sapiens.GRCh37.75.dna.chromosome.22.fa.gz ]
+        then
+                wget ftp://ftp.ensembl.org/pub/release-75//fasta/homo_sapiens/dna/Homo_sapiens.GRCh37.75.dna.chromosome.22.fa.gz
+        fi
+        gunzip -f Homo_sapiens.GRCh37.75.dna.chromosome.22.fa.gz
+fi
+if [ ! -f Homo_sapiens.GRCh37.75.dna.chromosome.22.fa.fai ]
+then
+        samtools faidx Homo_sapiens.GRCh37.75.dna.chromosome.22.fa
+fi
+
+#Ensemble NeuSomatic train       
+python ${neusomatic_dir}/neusomatic/python/preprocess.py \
+        --mode train \
+        --reference Homo_sapiens.GRCh37.75.dna.chromosome.22.fa \
+        --region_bed ${test_dir}/region.bed \
+        --tumor_bam ${test_dir}/tumor.bam \
+        --normal_bam ${test_dir}/normal.bam \
+        --work work_train \
+        --min_mapq 10 \
+        --num_threads 1 \
+        --truth_vcf ${test_dir}/train.vcf \
+        --scan_alignments_binary ${neusomatic_dir}/neusomatic/bin/scan_alignments
+
+CUDA_VISIBLE_DEVICES= python ${neusomatic_dir}/neusomatic/python/train.py \
+                --candidates_tsv work_train/dataset/*/candidates*.tsv \
+                --out work_train \
+                --num_threads 1 \
+                --batch_size 100
+
+
+cd ..
+
+file1=${test_dir}/example/work_standalone/NeuSomatic_standalone.vcf
+file2=${test_dir}/NeuSomatic_standalone.vcf
+
+cmp --silent $file1 $file2 && echo "### NeuSomatic stand-alone: SUCCESS! ###" \
 
 ```
-CUDA_VISIBLE_DEVICES=0,1,2,3 python train.py ...
+训练过程： 
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20200423215254558.png)
+
+call_bash:
 ```
-or
+#!/bin/bash
+set -e
+
+test_dir="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null && pwd )"
+neusomatic_dir="$( dirname ${test_dir} )"
+
+cd ${test_dir}
+mkdir -p example
+cd example
+if [ ! -f Homo_sapiens.GRCh37.75.dna.chromosome.22.fa ]
+then
+        if [ ! -f Homo_sapiens.GRCh37.75.dna.chromosome.22.fa.gz ]
+        then
+                wget ftp://ftp.ensembl.org/pub/release-75//fasta/homo_sapiens/dna/Homo_sapiens.GRCh37.75.dna.chromosome.22.fa.gz
+        fi
+        gunzip -f Homo_sapiens.GRCh37.75.dna.chromosome.22.fa.gz
+fi
+if [ ! -f Homo_sapiens.GRCh37.75.dna.chromosome.22.fa.fai ]
+then
+        samtools faidx Homo_sapiens.GRCh37.75.dna.chromosome.22.fa
+fi
+
+rm -rf work_ensemble
+#Ensemble NeuSomatic test 
+python ${neusomatic_dir}/neusomatic/python/preprocess.py \
+        --mode call \
+        --reference Homo_sapiens.GRCh37.75.dna.chromosome.22.fa \
+        --region_bed ${test_dir}/region.bed \
+        --tumor_bam ${test_dir}/tumor.bam \
+        --normal_bam ${test_dir}/normal.bam \
+        --work work_ensemble \
+        --scan_maf 0.05 \
+        --min_mapq 10 \
+        --snp_min_af 0.05 \
+        --snp_min_bq 20 \
+        --snp_min_ao 10 \
+        --ins_min_af 0.05 \
+        --del_min_af 0.05 \
+        --num_threads 1 \
+        --ensemble_tsv ${test_dir}/ensemble.tsv \
+        --scan_alignments_binary ${neusomatic_dir}/neusomatic/bin/scan_alignments
+
+CUDA_VISIBLE_DEVICES= python ${neusomatic_dir}/neusomatic/python/call.py \
+                --candidates_tsv work_ensemble/dataset/*/candidates*.tsv \
+                --reference Homo_sapiens.GRCh37.75.dna.chromosome.22.fa \
+                --out work_ensemble \
+                --checkpoint ${neusomatic_dir}/neusomatic/models/NeuSomatic_v0.1.0_ensemble_Dream3_70purity.pth \
+                --num_threads 1 \
+				--ensemble \
+                --batch_size 100
+
+python ${neusomatic_dir}/neusomatic/python/postprocess.py \
+                --reference Homo_sapiens.GRCh37.75.dna.chromosome.22.fa \
+                --tumor_bam ${test_dir}/tumor.bam \
+                --pred_vcf work_ensemble/pred.vcf \
+                --candidates_vcf work_ensemble/work_tumor/filtered_candidates.vcf \
+                --ensemble_tsv ${test_dir}/ensemble.tsv \
+                --output_vcf work_ensemble/NeuSomatic_ensemble.vcf \
+                --work work_ensemble
+
+
+cd ..
+
+file1=${test_dir}/example/work_standalone/NeuSomatic_standalone.vcf
+file2=${test_dir}/NeuSomatic_standalone.vcf
+
+cmp --silent $file1 $file2 && echo "### NeuSomatic stand-alone: SUCCESS! ###" \
+|| echo "### NeuSomatic stand-alone FAILED: Files ${file1} and ${file2} Are Different! ###"
+
+
+file1=${test_dir}/example/work_ensemble/NeuSomatic_ensemble.vcf
+file2=${test_dir}/NeuSomatic_ensemble.vcf
+
+cmp --silent $file1 $file2 && echo "### NeuSomatic ensemble: SUCCESS! ###" \
+|| echo "### NeuSomatic ensemble FAILED: Files ${file1} and ${file2} Are Different! ###"
 ```
-CUDA_VISIBLE_DEVICES=0,1,2,3 python call.py ...
-```
+实验结果：
 
-To run in CPU mode you can disable accessing to GPU by exporting `CUDA_VISIBLE_DEVICES=`.
-
-## Ensemble mode
-NeuSomatic can be used universally as a stand-alone somatic mutation detection method or with an ensemble of existing methods. NeuSomatic currently supports outputs from MuTect2, MuSE, Strelka2, SomaticSniper, VarDict, and VarScan2. For ensemble mode, the ensembled outputs of different somatic callers (as a single `.tsv` file) should be prepared and inputed using `--ensemble_tsv` argument in `preprocess.py` and `postprocess.py` . 
-
-There are two alternative ways to prepare this file:
-
-1. **Dockerized solution** for running all of the individual somatic callers (MuTect2, MuSE, Strelka2, SomaticSniper, VarDict, and VarScan2), and a wrapper that combines their output is explained at [ensemble_docker_pipelines](https://github.com/bioinform/neusomatic/tree/master/ensemble_docker_pipelines).
-
-2. Alternartively, if you don't want to use docker and already have the output of all somatic callers, you can prepare the `.tsv` file using the `SomaticSeq.Wrapper.sh` script [here](https://github.com/bioinform/somaticseq/blob/master/SomaticSeq.Wrapper.sh) (you may need to install the necessary dependencies for this script, explained [here](https://github.com/bioinform/somaticseq)).
-
-	For instance:
-	```
-	SomaticSeq.Wrapper.sh \
-	--output-dir output \
-	--genome-reference GRCh38.fa \
-	--tumor-bam tumor.bam \
-	--normal-bam normal.bam \
-	 -mutect2 MuTect2.vcf \
-	--varscan-snv VarScan2.snp.vcf \
-	--varscan-indel VarScan2.indel.vcf \
-	 -sniper SomaticSniper.vcf \
-	--vardict VarDict.vcf \
-	--muse MuSE.vcf \
-	--strelka-snv somatic.snvs.vcf.gz \
-	--strelka-indel somatic.indels.vcf.gz \
-	--inclusion-region region.bed \
-	 -dbsnp dbsnp.GRCh38.vcf \
-	 -gatk GenomeAnalysisTK.jar
-	```
-
-	Then, in the output directory, do:
-	```
-	cat <(cat Ensemble.s*.tsv |grep CHROM|head -1) \
-	    <(cat Ensemble.s*.tsv |grep -v CHROM) | sed "s/nan/0/g" > ensemble_ann.tsv
-	```
-	and provide `ensemble_ann.tsv` as `--ensemble_tsv` argument in `preprocess.py` and `postprocess.py`.
-
-
-### NOTE: 
-
-* To train or call in the ensemble mode you should use `--ensemble` argument in `train.py` and `call.py`.
-
-## Creating Training Data
-The best performance can be obtained when the network is trained on your input dataset. You can creat training data for your input data using [BAMSurgeon](https://github.com/adamewing/bamsurgeon) that can spike in *in silico* somatic mutations into existing BAM files. The dockerized piplines and complete documentation on how to creat training sets can be found [here](https://github.com/bioinform/somaticseq/tree/master/utilities/dockered_pipelines/bamSimulator).
-
-You can then used the synthetic tumor/normal pair and the known *in silico* spiked mutations (as truth set) to train the NeuSomatic network as shown in [Example Usage](#example-usage).
-
-
-
-## Trained Network Models
-We provide a set of trained NeuSomatic network models for general purpose usage. Users should note that these models are trained for sepcific settings and are not supposed to work perfectly for all circumestances.
-
-The SEQC-II pretrained models are the recommended NeuSomatic models and are analyzed in detail in [Sahraeian et al. 2019](https://doi.org/10.1101/667261).
-
-The following models can be found at `neusomatic/models` folder:
-
-
-### Latest models
-Model                                              | Mode         | Training Information                                                        
----------------------------------------------------|---------------|-----------------------------------------------------------------------
-`NeuSomatic_v0.1.4_standalone_SEQC-WGS-Spike.pth` |  Stand-alone  | SEQC-II (SEQC-WGS-Spike model) (trained on 20 WGS replicate pairs with in silico somatic mutations of 1%-100% AF, matched with both 95%N and 100%N, Illumina HiSeq and NovaSeq, BWA-MEM,  ~40x-220x)
-`NeuSomatic_v0.1.4_ensemble_SEQC-WGS-Spike.pth`   |  Ensemble     | SEQC-II (SEQC-WGS-Spike model) (trained on 20 WGS replicate pairs with in silico somatic mutations of 1%-100% AF, matched with both 95%N and 100%N, Illumina HiSeq and NovaSeq, BWA-MEM,  ~40x-220x, 5 callers used: MuTect2, Strelka2, MuSE, SomaticSniper, VarDict)
-`NeuSomatic_v0.1.4_standalone_SEQC-WGS-GT50-SpikeWGS10.pth` |  Stand-alone  | SEQC-II (SEQC-WGS-GT50-SpikeWGS10 model) (trained on combination of two datasets: (1) 50% of the genome for 24 real tumor-normal SEQC-II replicates using the HighConf truth set annotation, with multiple purity settings of 100T-100N/10T-100N/10T-95N, 1%-100% AF and (2) 10% of data used in `NeuSomatic_v0.1.4_standalone_SEQC-WGS-Spike.pth` model. Illumina HiSeq and NovaSeq, BWA-MEM,  ~40x-390x)
-`NeuSomatic_v0.1.4_ensemble_SEQC-WGS-GT50-SpikeWGS10.pth` |  Ensemble     | SEQC-II (SEQC-WGS-GT50-SpikeWGS10 model) (trained on combination of two datasets: (1) 50% of the genome for 24 real tumor-normal SEQC-II replicates using the HighConf truth set annotation, with multiple purity settings of 100T-100N/10T-100N/10T-95N, 1%-100% AF and (2) 10% of data used in `NeuSomatic_v0.1.4_ensemble_SEQC-WGS-Spike.pth` model. Illumina HiSeq and NovaSeq, BWA-MEM,  ~40x-390x, 5 callers used: MuTect2, Strelka2, MuSE, SomaticSniper, VarDict)
-
-### Older models
-Model                                              | Mode         | Training Information                                                        
----------------------------------------------------|---------------|-----------------------------------------------------------------------
-`NeuSomatic_v0.1.3_standalone_Dream3.pth` |  Stand-alone  | WGS Dream Challenge Stage 3 (trained on multiple purity settings: 100T-100N/50T-100N/70T-95N/50T-95N/25T-95N, Illumina, BWA-MEM,  ~30x)
-`NeuSomatic_v0.1.3_ensemble_Dream3.pth`   |  Ensemble     | WGS Dream Challenge Stage 3 (trained on multiple purity settings: 100T-100N/50T-100N/70T-95N/50T-95N/25T-95N, Illumina, BWA-MEM,  ~30x, 6 callers used: MuTect2, Strelka2, MuSE, SomaticSniper, VarDict, VarScan2)
-`NeuSomatic_v0.1.0_standalone_Dream3_70purity.pth` |  Stand-alone  | WGS Dream Challenge Stage 3 (70% tumor and 95% normal purities, Illumina, BWA-MEM,  ~30x) 
-`NeuSomatic_v0.1.0_ensemble_Dream3_70purity.pth`   |  Ensemble     | WGS Dream Challenge Stage 3 (70% tumor and 95% normal purities, Illumina, BWA-MEM,  ~30x, 6 callers used: MuTect2, Strelka2, MuSE, SomaticSniper, VarDict, VarScan2) 
-`NeuSomatic_v0.1.0_standalone_WEX_100purity.pth`   |  Stand-alone  | WEX (100% tumor and normal purities, Illumina, BWA-MEM,  ~125x)
-`NeuSomatic_v0.1.0_ensemble_WEX_100purity.pth`     |  Ensemble     | WEX (100% tumor and normal purities, Illumina, BWA-MEM,  ~125x, 6 callers used: MuTect2, Strelka2, MuSE, SomaticSniper, VarDict, VarScan2)
-
-
-
-## HPC run
-For distributed data processing on HPC platforms, the input regions can be splitted to smaller sub-regions as follows:
-```
-python split_bed.py \
-	--region_bed region.bed \
-	--output work \
-	--num_splits 10
-```
-Then, each sub-region can be processed as follows (for instance on SGE cluster):
-```
-for i in {0..10}
-do
-	qsub -pe smp 24 \
-	"python preprocess.py \
-	--mode call [or --mode train]
-	--reference GRCh38.fa --tumor_bam tumor.bam --normal_bam normal.bam \
-	--region_bed work/splits/region_${i}.bed \
-	--work work/work_${i} \
-	--min_mapq 10 --number_threads 24 \
-	--scan_alignments_binary ../bin/scan_alignments"
-done
-```
-Then the candiate `.tsv` files to be used for train/call can be found at `work_*/dataset/*/candidates*.tsv`.
-
-## License
-NeuSomatic is licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License.
+![在这里插入图片描述](https://img-blog.csdnimg.cn/20200423220146611.png?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3dlaXhpbl80MTk1Nzk1NA==,size_16,color_FFFFFF,t_70)
 
 
